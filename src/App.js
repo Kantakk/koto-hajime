@@ -1,6 +1,7 @@
 import {
   Briefcase,
   CheckCircle,
+  Clock,
   Code,
   Heart,
   Home,
@@ -9,16 +10,16 @@ import {
   Palette,
   PlusCircle,
   Search,
+  Send,
   Star,
   Tag,
   Trash2,
+  TrendingUp,
   User,
   Users,
   X
 } from "lucide-react";
 import { useEffect, useState } from "react";
-// Supabaseクライアントをインポート
-import { supabase } from "./supabaseClient";
 
 /* ====== 定数 ====== */
 const TITLE_LIMIT = 40;
@@ -26,7 +27,10 @@ const CONTENT_LIMIT = 500;
 const PREVIEW_LIMIT = 120;
 const CONTRIBUTION_LIMIT = 300;
 const USER_KEY = "kht-user-v1";
+const STORAGE_KEY = "kotohajime-ideas-v4";
 const MODE_KEY = "kotohajime-mode";
+
+const GLOBAL_DISTRIBUTION = { creator: 30, contributors: 30, platform: 40 };
 
 const CATEGORIES = [
   { id: "ai", label: "AI", color: "bg-blue-100 text-blue-700" },
@@ -40,7 +44,7 @@ const CATEGORIES = [
 ];
 
 const truncateText = (text, limit) =>
-  text && text.length <= limit ? text : (text || "").slice(0, limit) + "…";
+  text.length <= limit ? text : text.slice(0, limit) + "…";
 
 const formatISODate = (iso) => {
   try {
@@ -78,7 +82,7 @@ const CategoryBadge = ({ categoryId }) => {
 const StatusBadge = ({ status }) => {
   const statuses = {
     draft: { label: "📝 投稿中", color: "bg-gray-100 text-gray-700" },
-    open: { label: "🌱 成長中", color: "bg-yellow-100 text-yellow-800" },
+    open: { label: "🌱 成長中", color: "bg-yellow-100 text-yellow-700" },
     verified: { label: "✅ 検証済み", color: "bg-green-100 text-green-700" },
     interest: { label: "🏢 企業関心あり", color: "bg-indigo-100 text-indigo-700" },
     realized: { label: "🎉 実現", color: "bg-pink-100 text-pink-700" }
@@ -91,6 +95,13 @@ const StatusBadge = ({ status }) => {
 const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
   const [type, setType] = useState("tech");
   const [content, setContent] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setType("tech");
+      setContent("");
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -111,35 +122,58 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
             <X size={20} />
           </button>
         </div>
-        <div className="text-sm text-slate-600 mb-4">「{truncateText(ideaTitle || "", 30)}」への貢献</div>
+
+        <div className="text-sm text-slate-600 mb-4">
+          「{truncateText(ideaTitle || "", 30)}」への貢献
+        </div>
+
         <div className="space-y-4">
           <div>
             <label className="text-xs font-bold text-slate-400 mb-2 block">貢献タイプ</label>
             <div className="flex gap-2">
-              {['tech', 'design', 'business'].map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setType(t)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border-2 ${type === t ? "border-yellow-500 bg-yellow-50 text-yellow-700" : "border-slate-200 text-slate-600"}`}>
-                  {t === 'tech' && <Code size={16} className="inline mr-1" />}
-                  {t === 'design' && <Palette size={16} className="inline mr-1" />}
-                  {t === 'business' && <Briefcase size={16} className="inline mr-1" />}
-                  {t === 'tech' ? '技術' : t === 'design' ? 'デザイン' : 'ビジネス'}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setType("tech")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border-2 ${type === "tech" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600"}`}
+              >
+                <Code size={16} className="inline mr-1" /> 技術
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("design")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border-2 ${type === "design" ? "border-purple-500 bg-purple-50 text-purple-700" : "border-slate-200 text-slate-600"}`}
+              >
+                <Palette size={16} className="inline mr-1" /> デザイン
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("business")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border-2 ${type === "business" ? "border-green-500 bg-green-50 text-green-700" : "border-slate-200 text-slate-600"}`}
+              >
+                <Briefcase size={16} className="inline mr-1" /> ビジネス
+              </button>
             </div>
           </div>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            maxLength={CONTRIBUTION_LIMIT}
-            rows={4}
-            className="w-full p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-yellow-400 text-sm"
-            placeholder="具体的な提案や改善案を入力してください..."
-          />
-          <button onClick={handleSubmit} disabled={!content.trim()} className="w-full py-3 bg-gradient-to-r from-yellow-500 to-amber-400 text-white rounded-xl font-bold disabled:opacity-50">
-            貢献を送信
+
+          <div>
+            <label className="text-xs font-bold text-slate-400 mb-2 block">貢献内容</label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              maxLength={CONTRIBUTION_LIMIT}
+              rows={4}
+              className="w-full p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+              placeholder="具体的な提案や改善案を入力してください..."
+            />
+            <p className="text-right text-xs text-slate-400 mt-1">{content.length}/{CONTRIBUTION_LIMIT}</p>
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={!content.trim()}
+            className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
+          >
+            貢献を追加
           </button>
         </div>
       </div>
@@ -151,54 +185,68 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
 const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribute, mode }) => {
   const [expanded, setExpanded] = useState(false);
   const [showContributions, setShowContributions] = useState(false);
+  const isLong = idea.content.length > PREVIEW_LIMIT;
 
   const userLikeCount = (idea.likes?.userLikes && currentUser?.id && idea.likes.userLikes[currentUser.id]) || 0;
   const remaining = 3 - userLikeCount;
-  const isOwner = currentUser && idea.author_id && currentUser.id === idea.author_id;
+  const isOwner = currentUser && idea.authorId && currentUser.id === idea.authorId;
 
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 transition-colors hover:border-amber-300">
+    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 transition-colors hover:border-indigo-200">
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={idea.status} />
           {idea.categories && idea.categories.length > 0 && <CategoryBadge categoryId={idea.categories[0]} />}
           {idea.verified && <CheckCircle size={16} className="text-green-500" />}
         </div>
-        <div className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full">{idea.likes?.count ?? 0} 応援</div>
+        <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full whitespace-nowrap">
+          {idea.likes?.count ?? 0} 応援
+        </div>
       </div>
 
       <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
         <User size={14} />
         <div>
-          <div className="font-bold text-slate-700">{idea.author}</div>
-          <div className="text-[11px]">{formatISODate(idea.created_at)}</div>
+          <div className="font-bold">{idea.author}</div>
+          <div className="text-[11px]">{idea.date}{idea.createdAt ? ` • ${formatISODate(idea.createdAt)}` : ""}</div>
         </div>
       </div>
 
       <h3 className="font-bold text-slate-900 mb-1">{idea.title}</h3>
-      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line mb-3">{expanded ? idea.content : truncateText(idea.content, PREVIEW_LIMIT)}</p>
 
-      {idea.content?.length > PREVIEW_LIMIT && (
-        <button onClick={() => setExpanded(!expanded)} className="text-xs text-amber-600 hover:underline mb-3 block">{expanded ? "閉じる" : "続きを読む"}</button>
+      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line mb-3">
+        {expanded ? idea.content : truncateText(idea.content, PREVIEW_LIMIT)}
+      </p>
+
+      {isLong && (
+        <button onClick={() => setExpanded(!expanded)} className="text-xs text-indigo-500 hover:underline mb-3">
+          {expanded ? "閉じる" : "続きを読む"}
+        </button>
       )}
 
       {idea.contributions && idea.contributions.length > 0 && (
         <div className="mb-3">
-          <button onClick={() => setShowContributions(!showContributions)} className="w-full p-3 bg-slate-50 rounded-lg text-left">
+          <button onClick={() => setShowContributions(!showContributions)} className="w-full p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-2"><Users size={14} /> 貢献者 {idea.contributions.length}名</span>
-              <span className="text-xs text-slate-400">{showContributions ? "閉じる" : "詳細"}</span>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <Users size={14} /> 貢献者 {idea.contributions.length}名
+              </div>
+              <span className="text-xs text-slate-400">{showContributions ? "閉じる" : "詳細を見る"}</span>
             </div>
           </button>
+
           {showContributions && (
             <div className="mt-2 space-y-2">
               {idea.contributions.map((c, i) => (
-                <div key={i} className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-sm">
-                  <div className="flex justify-between mb-1">
-                    <span className="font-bold text-slate-700">{c.user}</span>
-                    <ContributionBadge type={c.type} />
+                <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-700">{c.user}</span>
+                      <ContributionBadge type={c.type} />
+                    </div>
+                    <span className="text-xs text-slate-400">{c.date}{c.createdAt ? ` • ${formatISODate(c.createdAt)}` : ""}</span>
                   </div>
-                  <p className="text-slate-600">{c.content}</p>
+                  <p className="text-sm text-slate-600">{c.content}</p>
                 </div>
               ))}
             </div>
@@ -206,34 +254,111 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
         </div>
       )}
 
+      {mode === 'business' && idea.marketSize && (
+        <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+          <div className="text-xs font-bold text-blue-900">💰 想定市場規模: {idea.marketSize}</div>
+        </div>
+      )}
+
       <div className="flex gap-2">
         {mode === 'creator' ? (
           <>
-            <button onClick={() => onLike(idea)} className={`flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${remaining <= 0 ? "opacity-50" : "hover:bg-rose-50 hover:text-rose-500"}`} disabled={remaining <= 0}>
-              <Heart size={16} fill={userLikeCount > 0 ? "currentColor" : "none"} /> 応援 {userLikeCount > 0 ? `(${userLikeCount})` : ""}
+            <button
+              onClick={() => onLike(idea.id)}
+              className={`flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-rose-50 hover:text-rose-500 transition-all active:scale-95 ${remaining <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={remaining <= 0}
+              title={remaining <= 0 ? "1投稿につき最大3いいねです" : `残り ${remaining} いいね`}
+            >
+              <Heart size={16} /> 応援 {userLikeCount > 0 ? `(${userLikeCount})` : ""}
             </button>
-            <button onClick={() => onContribute(idea)} className="flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-amber-50 hover:text-amber-700">
+
+            <button
+              onClick={() => onContribute(idea)}
+              className="flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-50 hover:text-indigo-500 transition-all active:scale-95"
+            >
               <MessageSquare size={16} /> 貢献する
             </button>
           </>
         ) : (
           <>
-            <button className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95"><Briefcase size={16} /> 興味あり</button>
-            <button onClick={() => onFavorite(idea.id)} className={`py-2 px-4 rounded-xl border-2 ${idea.favorited ? "border-yellow-600 bg-yellow-50 text-yellow-700" : "border-slate-200 bg-white text-slate-400"} transition-all active:scale-95`}><Star size={16} fill={idea.favorited ? "currentColor" : "none"} /></button>
+            <button className="flex-1 py-2 rounded-xl bg-indigo-500 text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all active:scale-95">
+              <Briefcase size={16} /> 興味あり
+            </button>
+            <button
+              onClick={() => onFavorite(idea.id)}
+              className={`py-2 px-4 rounded-xl border-2 ${idea.favorited ? "border-yellow-400 bg-yellow-50 text-yellow-600" : "border-slate-200 bg-white text-slate-400"} text-sm font-bold flex items-center justify-center gap-2 hover:border-yellow-400 hover:bg-yellow-50 hover:text-yellow-600 transition-all active:scale-95`}
+            >
+              <Star size={16} fill={idea.favorited ? "currentColor" : "none"} />
+            </button>
           </>
         )}
       </div>
 
-      {isOwner && (
-        <div className="mt-3 text-right">
-          <button onClick={() => onDelete(idea.id)} className="text-xs text-rose-600 hover:underline flex items-center gap-1 ml-auto"><Trash2 size={14} /> 削除</button>
+      <div className="mt-3 flex items-center justify-between">
+        <div className="text-[11px] text-slate-300">ハッシュ: <span className="select-all">{(idea.hash || "").slice(0, 16)}…</span></div>
+        <div className="flex items-center gap-2">
+          {isOwner && (
+            <button onClick={() => onDelete(idea.id)} className="text-xs text-rose-600 hover:underline flex items-center gap-1">
+              <Trash2 size={14} /> 削除
+            </button>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
+/* ====== ModeToggle ====== */
+const ModeToggle = ({ mode, setMode, setActiveTab }) => {
+  // 安全にタブを戻す処理をここで行う
+  const switchTo = (m) => {
+    setMode(m);
+    // business は post を持たないので home に戻す
+    setActiveTab("home");
+  };
+
+  return (
+    <div className="flex items-center gap-2 bg-white rounded-full p-1 border-2 border-slate-200 shadow-sm">
+      <button onClick={() => switchTo("creator")} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${mode === "creator" ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md" : "text-slate-400 hover:text-slate-600"}`}>
+        <Palette size={16} /> <span className="hidden sm:inline">クリエイター</span>
+      </button>
+      <button onClick={() => switchTo("business")} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${mode === "business" ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md" : "text-slate-400 hover:text-slate-600"}`}>
+        <Briefcase size={16} /> <span className="hidden sm:inline">ビジネス</span>
+      </button>
+    </div>
+  );
+};
+
+/* ====== DistributionInfo ====== */
+const DistributionInfo = () => (
+  <div className="max-w-md mx-auto p-4">
+    <div className="bg-gradient-to-r from-gray-50 to-white border rounded-xl p-3 text-sm text-slate-700 shadow-sm">
+      <div className="font-bold mb-2">収益配分ルール（全体）</div>
+      <div className="flex gap-4">
+        <div className="text-center">
+          <div className="font-bold text-purple-600">{GLOBAL_DISTRIBUTION.creator}%</div>
+          <div className="text-slate-500 text-xs">原案者</div>
+        </div>
+        <div className="text-center">
+          <div className="font-bold text-pink-600">{GLOBAL_DISTRIBUTION.contributors}%</div>
+          <div className="text-slate-500 text-xs">貢献者</div>
+        </div>
+        <div className="text-center">
+          <div className="font-bold text-indigo-600">{GLOBAL_DISTRIBUTION.platform}%</div>
+          <div className="text-slate-500 text-xs">運営</div>
+        </div>
+      </div>
+      <div className="text-xs text-slate-400 mt-2">※β版</div>
+    </div>
+  </div>
+);
+
 /* ====== App ====== */
+const AVAILABLE_TABS = {
+  creator: ["home", "post"],
+  business: ["home", "favorites"]
+};
+
 const App = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [sortMode, setSortMode] = useState("new");
@@ -251,7 +376,8 @@ const App = () => {
   useEffect(() => {
     let u = localStorage.getItem(USER_KEY);
     if (!u) {
-      const user = { id: crypto.randomUUID(), name: "あなた" };
+      const id = crypto.randomUUID();
+      const user = { id, name: "あなた" };
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       setCurrentUser(user);
     } else {
@@ -259,162 +385,380 @@ const App = () => {
     }
   }, []);
 
-  /* Supabaseからデータ取得 */
-  const fetchIdeas = async () => {
-    const { data, error } = await supabase.from('ideas').select('*').order('created_at', { ascending: false });
-    if (error) console.error("Error fetching:", error);
-    else setIdeas(data || []);
-  };
-
+  /* データロード（サンプル込み） */
   useEffect(() => {
-    fetchIdeas();
+    const savedIdeas = localStorage.getItem(STORAGE_KEY);
     const savedMode = localStorage.getItem(MODE_KEY);
+
+    if (savedIdeas) {
+      setIdeas(JSON.parse(savedIdeas));
+    } else {
+      const sampleIdeas = [
+        {
+          id: 1,
+          title: "音楽で料理が美味しくなるレシピアプリ",
+          content: "料理のプロセスに合わせて最適な音楽を流すことで、味覚を増幅させるAIレシピアプリ。",
+          author: "山田太郎",
+          authorId: null,
+          date: "2025-01-15",
+          createdAt: new Date().toISOString(),
+          likes: { count: 234, userLikes: {} },
+          status: "verified",
+          verified: true,
+          marketSize: "50億円",
+          categories: ["ai", "food"],
+          contributions: [
+            { user: "技術者A", type: "tech", content: "React NativeとSpotify APIで実装可能", date: "2025-01-16", createdAt: new Date().toISOString() },
+            { user: "デザイナーB", type: "design", content: "料理写真とビジュアライザーの融合UI提案", date: "2025-01-16", createdAt: new Date().toISOString() }
+          ],
+          favorited: false,
+          hash: "a3f8d92e1b4c5"
+        },
+        {
+          id: 2,
+          title: "夢日記を分析してストーリーに変換するサービス",
+          content: "毎日の夢を記録すると、AIが物語として再構成。",
+          author: "佐藤花子",
+          authorId: null,
+          date: "2025-01-14",
+          createdAt: new Date().toISOString(),
+          likes: { count: 567, userLikes: {} },
+          status: "interest",
+          verified: true,
+          marketSize: "30億円",
+          categories: ["ai", "entertainment"],
+          contributions: [{ user: "開発者D", type: "tech", content: "GPT-4での実装例を作成しました", date: "2025-01-15", createdAt: new Date().toISOString() }],
+          favorited: false,
+          hash: "b7e2c41f9a6d8"
+        }
+      ];
+      setIdeas(sampleIdeas);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleIdeas));
+    }
+
     if (savedMode) setMode(savedMode);
   }, []);
 
-  /* モード保存 */
+  /* モード変更時の安全処理 */
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);
-    if (mode === 'business' && activeTab === 'post') setActiveTab('home');
+    if (!AVAILABLE_TABS[mode].includes(activeTab)) {
+      setActiveTab("home");
+    }
   }, [mode]);
 
+  const saveIdeas = (data) => {
+    setIdeas(data);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  };
+
   /* 投稿 */
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
-
+    const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
     const now = new Date().toISOString();
     const newIdea = {
+      id: Date.now(),
       title: title.trim(),
       content: content.trim(),
-      author: currentUser.name,
-      author_id: currentUser.id,
-      created_at: now,
+      author: user.name || "あなた",
+      authorId: user.id,
+      date: new Date().toLocaleDateString(),
+      createdAt: now,
       likes: { count: 0, userLikes: {} },
       status: "draft",
       verified: false,
       categories: selectedCategories,
       contributions: [],
+      favorited: false,
       hash: crypto.randomUUID().slice(0, 16)
     };
 
-    const { data, error } = await supabase.from('ideas').insert([newIdea]).select();
-    if (error) {
-      alert("エラー: " + error.message);
+    saveIdeas([newIdea, ...ideas]);
+    setTitle("");
+    setContent("");
+    setSelectedCategories([]);
+    setActiveTab("home");
+  };
+
+  /* いいね（1ユーザー1投稿につき最大3回） */
+  const handleLike = (id) => {
+    const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
+    if (!user) return;
+    const next = ideas.map((it) => {
+      if (it.id !== id) return it;
+      const userLikes = it.likes?.userLikes ? { ...it.likes.userLikes } : {};
+      const cur = userLikes[user.id] ?? 0;
+      if (cur >= 3) return it;
+      userLikes[user.id] = cur + 1;
+      const newCount = (it.likes?.count ?? 0) + 1;
+      return { ...it, likes: { count: newCount, userLikes } };
+    });
+    saveIdeas(next);
+  };
+
+  /* お気に入り（トグル） */
+  const handleFavorite = (id) => {
+    saveIdeas(ideas.map((i) => (i.id === id ? { ...i, favorited: !i.favorited } : i)));
+  };
+
+  /* 投稿削除（自分のみ） */
+  const handleDelete = (id) => {
+    const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
+    const target = ideas.find((i) => i.id === id);
+    if (!target) return;
+    if (target.authorId && user && target.authorId === user.id) {
+      saveIdeas(ideas.filter((i) => i.id !== id));
     } else {
-      setIdeas([data[0], ...ideas]);
-      setTitle(""); setContent(""); setSelectedCategories([]);
-      setActiveTab("home");
+      alert("この投稿はあなたの投稿ではないため削除できません。");
     }
   };
 
-  /* いいね */
-  const handleLike = async (idea) => {
-    const userLikes = idea.likes?.userLikes ? { ...idea.likes.userLikes } : {};
-    const cur = userLikes[currentUser.id] ?? 0;
-    if (cur >= 3) return;
-
-    userLikes[currentUser.id] = cur + 1;
-    const newLikes = { count: (idea.likes?.count ?? 0) + 1, userLikes };
-
-    const { error } = await supabase.from('ideas').update({ likes: newLikes }).eq('id', idea.id);
-    if (!error) setIdeas(ideas.map(i => i.id === idea.id ? { ...i, likes: newLikes } : i));
+  /* 貢献モーダルオープン */
+  const handleContribute = (idea) => {
+    setContributionModal({ isOpen: true, idea });
   };
 
-  /* 貢献 */
-  const handleContributionSubmit = async ({ type, content: cContent }) => {
-    const newContrib = { user: currentUser.name, type, content: cContent, created_at: new Date().toISOString() };
-    const targetIdea = contributionModal.idea;
-    const updatedContribs = [...(targetIdea.contributions || []), newContrib];
+  /* 貢献モーダルの送信 */
+  const handleContributionSubmit = ({ type, content: contributionContent }) => {
+    const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
+    const newContribution = {
+      user: user.name || "あなた",
+      type,
+      content: contributionContent,
+      date: new Date().toLocaleDateString(),
+      createdAt: new Date().toISOString()
+    };
 
-    const { error } = await supabase.from('ideas').update({ contributions: updatedContribs, status: "open" }).eq('id', targetIdea.id);
-    if (!error) setIdeas(ideas.map(i => i.id === targetIdea.id ? { ...i, contributions: updatedContribs, status: "open" } : i));
+    saveIdeas(
+      ideas.map((i) =>
+        i.id === contributionModal.idea.id
+          ? { ...i, contributions: [...(i.contributions || []), newContribution], status: "open" }
+          : i
+      )
+    );
     setContributionModal({ isOpen: false, idea: null });
   };
 
-  /* 削除 */
-  const handleDelete = async (id) => {
-    if (!window.confirm("本当に削除しますか？")) return;
-    const { error } = await supabase.from('ideas').delete().eq('id', id);
-    if (!error) setIdeas(ideas.filter(i => i.id !== id));
+  const toggleCategorySelect = (catId) => {
+    setSelectedCategories((prev) => (prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]));
   };
 
-  /* お気に入り (ローカル体験) */
-  const handleFavorite = (id) => setIdeas(ideas.map(i => i.id === id ? { ...i, favorited: !i.favorited } : i));
+  const toggleCategoryFilter = (catId) => {
+    setFilterCategories((prev) =>
+      prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]
+    );
+  };
 
-  /* フィルタリング */
-  let filtered = mode === "business" ? ideas.filter(i => i.verified) : ideas;
-  if (activeTab === "favorites") filtered = filtered.filter(i => i.favorited);
-  if (searchQuery) {
-    const q = searchQuery.toLowerCase();
-    filtered = filtered.filter(i => (i.title || "").toLowerCase().includes(q) || (i.content || "").toLowerCase().includes(q));
+  /* フィルタリング順序： mode -> favorites tab -> search -> category filter -> sort */
+  let filteredIdeas = mode === "business" ? ideas.filter((i) => i.verified === true) : ideas;
+
+  if (activeTab === "favorites" && mode === "business") {
+    filteredIdeas = filteredIdeas.filter((i) => i.favorited);
   }
-  if (filterCategories.length > 0) filtered = filtered.filter(i => i.categories?.some(c => filterCategories.includes(c)));
 
-  const sorted = [...filtered].sort((a, b) => sortMode === "popular" ? (b.likes?.count || 0) - (a.likes?.count || 0) : new Date(b.created_at) - new Date(a.created_at));
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filteredIdeas = filteredIdeas.filter(
+      (i) => (i.title || "").toLowerCase().includes(q) || (i.content || "").toLowerCase().includes(q)
+    );
+  }
+
+  if (filterCategories.length > 0) {
+    filteredIdeas = filteredIdeas.filter((i) => i.categories?.some((c) => filterCategories.includes(c)));
+  }
+
+  const sortedIdeas = [...filteredIdeas].sort((a, b) =>
+    sortMode === "popular" ? (b.likes?.count ?? 0) - (a.likes?.count ?? 0) : b.id - a.id
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 pb-36 font-sans">
-      <header className="sticky top-0 z-10 bg-gradient-to-r from-yellow-500 to-amber-400 text-white p-4 shadow-md">
+      <header className="sticky top-0 z-10 bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 shadow-md">
         <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Lightbulb size={22} />
             <h1 className="text-lg font-bold">コトハジメ</h1>
           </div>
-          <div className="flex bg-white/20 rounded-full p-1">
-            <button onClick={() => {setMode("creator"); setActiveTab("home")}} className={`px-3 py-1 rounded-full text-xs font-bold ${mode === "creator" ? "bg-white text-amber-600" : "text-white"}`}>
-              <Lightbulb size={14} className="inline mr-2" /> クリエイター
-            </button>
-            <button onClick={() => {setMode("business"); setActiveTab("home")}} className={`px-3 py-1 rounded-full text-xs font-bold ${mode === "business" ? "bg-white text-amber-600" : "text-white"}`}>
-              <Lightbulb size={14} className="inline mr-2" /> ビジネス
-            </button>
-          </div>
+          <ModeToggle mode={mode} setMode={setMode} setActiveTab={setActiveTab} />
         </div>
       </header>
 
+      <DistributionInfo />
+
+      {mode === "business" && (
+        <div className="max-w-md mx-auto p-4">
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-4 rounded-2xl shadow-md mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Briefcase size={20} />
+              <span className="font-bold">ビジネスモード</span>
+            </div>
+            <p className="text-sm opacity-90">検証済みの高品質なアイデアのみを表示しています。</p>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-md mx-auto p-4 space-y-4">
-        {activeTab === "post" ? (
+        {(activeTab === "home" || (activeTab === "favorites" && mode === "business")) ? (
+          <>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="タイトル・内容から検索..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => toggleCategoryFilter(cat.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition ${filterCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex bg-white rounded-lg p-1 border">
+              <button
+                onClick={() => setSortMode("new")}
+                className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "new" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}
+              >
+                <Clock size={14} /> 新着
+              </button>
+              <button
+                onClick={() => setSortMode("popular")}
+                className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "popular" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}
+              >
+                <TrendingUp size={14} /> 人気
+              </button>
+            </div>
+
+            {sortedIdeas.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">該当するアイデアがありません</div>
+            ) : (
+              sortedIdeas.map((idea) => (
+                <IdeaCard
+                  key={idea.id}
+                  idea={idea}
+                  currentUser={currentUser}
+                  onLike={handleLike}
+                  onFavorite={handleFavorite}
+                  onDelete={handleDelete}
+                  onContribute={handleContribute}
+                  mode={mode}
+                />
+              ))
+            )}
+          </>
+        ) : activeTab === "post" && mode === "creator" ? (
           <div className="bg-white p-6 rounded-3xl shadow-lg">
-            <h2 className="text-xl font-bold mb-4">アイデアを公開</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="タイトル..." className="w-full p-3 rounded-xl bg-slate-50 border-none" maxLength={TITLE_LIMIT} />
-              <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="内容..." rows={5} className="w-full p-3 rounded-xl bg-slate-50 border-none" maxLength={CONTENT_LIMIT} />
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(c => (
-                  <button key={c.id} type="button" onClick={() => setSelectedCategories(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])} className={`px-3 py-1 rounded-full text-xs font-bold ${selectedCategories.includes(c.id) ? c.color : "bg-slate-100 text-slate-400"}`}>{c.label}</button>
-                ))}
+            <h2 className="text-xl font-black mb-6 text-slate-800">アイデアを公開</h2>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="text-xs font-bold text-slate-400">タイトル</label>
+                <input
+                  value={title}
+                  maxLength={TITLE_LIMIT}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="あなたの「もしも」を一言で..."
+                />
+                <p className="text-right text-xs text-slate-400">{title.length}/{TITLE_LIMIT}</p>
               </div>
-              <button type="submit" className="w-full bg-amber-500 text-white py-3 rounded-xl font-bold">公開する</button>
-              <button type="button" onClick={() => setActiveTab("home")} className="w-full text-slate-400 text-sm">キャンセル</button>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400">内容</label>
+                <textarea
+                  rows={5}
+                  value={content}
+                  maxLength={CONTENT_LIMIT}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="詳しく教えてください..."
+                />
+                <p className="text-right text-xs text-slate-400">{content.length}/{CONTENT_LIMIT}</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 mb-2 block">カテゴリー（複数選択可）</label>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(cat => (
+                    <button
+                      type="button"
+                      key={cat.id}
+                      onClick={() => toggleCategorySelect(cat.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition ${selectedCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 bg-purple-50 rounded-xl">
+                <div className="text-xs font-bold text-purple-900 mb-2">💎 このアイデアが実現したら</div>
+                <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                  <div>
+                    <div className="font-bold text-purple-600">{GLOBAL_DISTRIBUTION.creator}%</div>
+                    <div className="text-slate-600">あなた</div>
+                  </div>
+                  <div>
+                    <div className="font-bold text-pink-600">{GLOBAL_DISTRIBUTION.contributors}%</div>
+                    <div className="text-slate-600">貢献者</div>
+                  </div>
+                  <div>
+                    <div className="font-bold text-indigo-600">{GLOBAL_DISTRIBUTION.platform}%</div>
+                    <div className="text-slate-600">実現費用</div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform">
+                <Send size={18} /> アイデアを公開する
+              </button>
             </form>
           </div>
         ) : (
-          <>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="検索..." className="w-full pl-12 pr-4 py-3 rounded-xl bg-white border border-slate-200" />
-            </div>
-            <div className="flex gap-2 bg-white p-1 rounded-lg border">
-              <button onClick={() => setSortMode("new")} className={`flex-1 py-1 text-xs font-bold rounded ${sortMode === "new" ? "bg-slate-100" : "text-slate-400"}`}>新着</button>
-              <button onClick={() => setSortMode("popular")} className={`flex-1 py-1 text-xs font-bold rounded ${sortMode === "popular" ? "bg-slate-100" : "text-slate-400"}`}>人気</button>
-            </div>
-            {sorted.map(idea => (
-              <IdeaCard key={idea.id} idea={idea} currentUser={currentUser} onLike={handleLike} onFavorite={handleFavorite} onDelete={handleDelete} onContribute={idea => setContributionModal({ isOpen: true, idea })} mode={mode} />
-            ))}
-          </>
+          <div className="text-center py-12 text-slate-400">この画面は現在利用できません</div>
         )}
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t p-3 flex justify-around">
-        <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center text-xs ${activeTab === "home" ? "text-amber-600" : "text-slate-400"}`}><Home size={20} />ホーム</button>
-        {mode === "creator" ? (
-          <button onClick={() => setActiveTab("post")} className={`flex flex-col items-center text-xs ${activeTab === "post" ? "text-amber-600" : "text-slate-400"}`}><PlusCircle size={20} />投稿</button>
-        ) : (
-          <button onClick={() => setActiveTab("favorites")} className={`flex flex-col items-center text-xs ${activeTab === "favorites" ? "text-amber-600" : "text-slate-400"}`}><Star size={20} />お気に入り</button>
-        )}
-      </footer>
+      {/* Contribution Modal */}
+      <ContributionModal
+        isOpen={contributionModal.isOpen}
+        ideaTitle={contributionModal.idea?.title}
+        onClose={() => setContributionModal({ isOpen: false, idea: null })}
+        onSubmit={handleContributionSubmit}
+      />
 
-      <ContributionModal isOpen={contributionModal.isOpen} ideaTitle={contributionModal.idea?.title} onClose={() => setContributionModal({ isOpen: false, idea: null })} onSubmit={handleContributionSubmit} />
+      {/* フッターナビ */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md">
+        <div className="max-w-md mx-auto flex justify-around py-3">
+          <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center text-xs ${activeTab === "home" ? "text-indigo-600 font-bold" : "text-slate-400"}`}>
+            <Home size={20} /> ホーム
+          </button>
+
+          {mode === "creator" && (
+            <button onClick={() => setActiveTab("post")} className={`flex flex-col items-center text-xs ${activeTab === "post" ? "text-indigo-600 font-bold" : "text-slate-400"}`}>
+              <PlusCircle size={20} /> 投稿
+            </button>
+          )}
+
+          {mode === "business" && (
+            <button onClick={() => setActiveTab("favorites")} className={`flex flex-col items-center text-xs ${activeTab === "favorites" ? "text-indigo-600 font-bold" : "text-slate-400"}`}>
+              <Star size={20} /> お気に入り
+            </button>
+          )}
+        </div>
+      </footer>
     </div>
   );
 };
