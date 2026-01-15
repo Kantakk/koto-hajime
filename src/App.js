@@ -78,7 +78,7 @@ const CategoryBadge = ({ categoryId }) => {
 const StatusBadge = ({ status }) => {
   const statuses = {
     draft: { label: "📝 投稿中", color: "bg-gray-100 text-gray-700" },
-    open: { label: "🌱 成長中", color: "bg-yellow-100 text-yellow-700" },
+    open: { label: "🌱 成長中", color: "bg-yellow-100 text-yellow-800" },
     verified: { label: "✅ 検証済み", color: "bg-green-100 text-green-700" },
     interest: { label: "🏢 企業関心あり", color: "bg-indigo-100 text-indigo-700" },
     realized: { label: "🎉 実現", color: "bg-pink-100 text-pink-700" }
@@ -111,9 +111,7 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
             <X size={20} />
           </button>
         </div>
-        <div className="text-sm text-slate-600 mb-4">
-          「{truncateText(ideaTitle || "", 30)}」への貢献
-        </div>
+        <div className="text-sm text-slate-600 mb-4">「{truncateText(ideaTitle || "", 30)}」への貢献</div>
         <div className="space-y-4">
           <div>
             <label className="text-xs font-bold text-slate-400 mb-2 block">貢献タイプ</label>
@@ -123,8 +121,7 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
                   key={t}
                   type="button"
                   onClick={() => setType(t)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border-2 ${type === t ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600"}`}
-                >
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold border-2 ${type === t ? "border-yellow-500 bg-yellow-50 text-yellow-700" : "border-slate-200 text-slate-600"}`}>
                   {t === 'tech' && <Code size={16} className="inline mr-1" />}
                   {t === 'design' && <Palette size={16} className="inline mr-1" />}
                   {t === 'business' && <Briefcase size={16} className="inline mr-1" />}
@@ -138,14 +135,10 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
             onChange={(e) => setContent(e.target.value)}
             maxLength={CONTRIBUTION_LIMIT}
             rows={4}
-            className="w-full p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+            className="w-full p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-yellow-400 text-sm"
             placeholder="具体的な提案や改善案を入力してください..."
           />
-          <button
-            onClick={handleSubmit}
-            disabled={!content.trim()}
-            className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold disabled:opacity-50"
-          >
+          <button onClick={handleSubmit} disabled={!content.trim()} className="w-full py-3 bg-gradient-to-r from-yellow-500 to-amber-400 text-white rounded-xl font-bold disabled:opacity-50">
             貢献を送信
           </button>
         </div>
@@ -158,22 +151,20 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
 const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribute, mode }) => {
   const [expanded, setExpanded] = useState(false);
   const [showContributions, setShowContributions] = useState(false);
-  
+
   const userLikeCount = (idea.likes?.userLikes && currentUser?.id && idea.likes.userLikes[currentUser.id]) || 0;
   const remaining = 3 - userLikeCount;
   const isOwner = currentUser && idea.author_id && currentUser.id === idea.author_id;
 
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 transition-colors hover:border-indigo-200">
+    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 transition-colors hover:border-amber-300">
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={idea.status} />
           {idea.categories && idea.categories.length > 0 && <CategoryBadge categoryId={idea.categories[0]} />}
           {idea.verified && <CheckCircle size={16} className="text-green-500" />}
         </div>
-        <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
-          {idea.likes?.count ?? 0} 応援
-        </div>
+        <div className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full">{idea.likes?.count ?? 0} 応援</div>
       </div>
 
       <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
@@ -185,23 +176,17 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
       </div>
 
       <h3 className="font-bold text-slate-900 mb-1">{idea.title}</h3>
-      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line mb-3">
-        {expanded ? idea.content : truncateText(idea.content, PREVIEW_LIMIT)}
-      </p>
+      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line mb-3">{expanded ? idea.content : truncateText(idea.content, PREVIEW_LIMIT)}</p>
 
       {idea.content?.length > PREVIEW_LIMIT && (
-        <button onClick={() => setExpanded(!expanded)} className="text-xs text-indigo-500 hover:underline mb-3 block">
-          {expanded ? "閉じる" : "続きを読む"}
-        </button>
+        <button onClick={() => setExpanded(!expanded)} className="text-xs text-amber-600 hover:underline mb-3 block">{expanded ? "閉じる" : "続きを読む"}</button>
       )}
 
       {idea.contributions && idea.contributions.length > 0 && (
         <div className="mb-3">
           <button onClick={() => setShowContributions(!showContributions)} className="w-full p-3 bg-slate-50 rounded-lg text-left">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                <Users size={14} /> 貢献者 {idea.contributions.length}名
-              </span>
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-2"><Users size={14} /> 貢献者 {idea.contributions.length}名</span>
               <span className="text-xs text-slate-400">{showContributions ? "閉じる" : "詳細"}</span>
             </div>
           </button>
@@ -224,40 +209,24 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
       <div className="flex gap-2">
         {mode === 'creator' ? (
           <>
-            <button
-              onClick={() => onLike(idea)}
-              className={`flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${remaining <= 0 ? "opacity-50" : "hover:bg-rose-50 hover:text-rose-500"}`}
-              disabled={remaining <= 0}
-            >
+            <button onClick={() => onLike(idea)} className={`flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${remaining <= 0 ? "opacity-50" : "hover:bg-rose-50 hover:text-rose-500"}`} disabled={remaining <= 0}>
               <Heart size={16} fill={userLikeCount > 0 ? "currentColor" : "none"} /> 応援 {userLikeCount > 0 ? `(${userLikeCount})` : ""}
             </button>
-            <button
-              onClick={() => onContribute(idea)}
-              className="flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-50 hover:text-indigo-500"
-            >
+            <button onClick={() => onContribute(idea)} className="flex-1 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-amber-50 hover:text-amber-700">
               <MessageSquare size={16} /> 貢献する
             </button>
           </>
         ) : (
           <>
-            <button className="flex-1 py-2 rounded-xl bg-indigo-500 text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all active:scale-95">
-              <Briefcase size={16} /> 興味あり
-            </button>
-            <button
-              onClick={() => onFavorite(idea.id)}
-              className={`py-2 px-4 rounded-xl border-2 ${idea.favorited ? "border-yellow-400 bg-yellow-50 text-yellow-600" : "border-slate-200 bg-white text-slate-400"} transition-all active:scale-95`}
-            >
-              <Star size={16} fill={idea.favorited ? "currentColor" : "none"} />
-            </button>
+            <button className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95"><Briefcase size={16} /> 興味あり</button>
+            <button onClick={() => onFavorite(idea.id)} className={`py-2 px-4 rounded-xl border-2 ${idea.favorited ? "border-yellow-600 bg-yellow-50 text-yellow-700" : "border-slate-200 bg-white text-slate-400"} transition-all active:scale-95`}><Star size={16} fill={idea.favorited ? "currentColor" : "none"} /></button>
           </>
         )}
       </div>
 
       {isOwner && (
         <div className="mt-3 text-right">
-          <button onClick={() => onDelete(idea.id)} className="text-xs text-rose-600 hover:underline flex items-center gap-1 ml-auto">
-            <Trash2 size={14} /> 削除
-          </button>
+          <button onClick={() => onDelete(idea.id)} className="text-xs text-rose-600 hover:underline flex items-center gap-1 ml-auto"><Trash2 size={14} /> 削除</button>
         </div>
       )}
     </div>
@@ -292,11 +261,7 @@ const App = () => {
 
   /* Supabaseからデータ取得 */
   const fetchIdeas = async () => {
-    const { data, error } = await supabase
-      .from('ideas')
-      .select('*')
-      .order('id', { ascending: false });
-
+    const { data, error } = await supabase.from('ideas').select('*').order('created_at', { ascending: false });
     if (error) console.error("Error fetching:", error);
     else setIdeas(data || []);
   };
@@ -310,6 +275,7 @@ const App = () => {
   /* モード保存 */
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);
+    if (mode === 'business' && activeTab === 'post') setActiveTab('home');
   }, [mode]);
 
   /* 投稿 */
@@ -317,11 +283,13 @@ const App = () => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
 
+    const now = new Date().toISOString();
     const newIdea = {
       title: title.trim(),
       content: content.trim(),
       author: currentUser.name,
       author_id: currentUser.id,
+      created_at: now,
       likes: { count: 0, userLikes: {} },
       status: "draft",
       verified: false,
@@ -331,7 +299,6 @@ const App = () => {
     };
 
     const { data, error } = await supabase.from('ideas').insert([newIdea]).select();
-
     if (error) {
       alert("エラー: " + error.message);
     } else {
@@ -350,36 +317,19 @@ const App = () => {
     userLikes[currentUser.id] = cur + 1;
     const newLikes = { count: (idea.likes?.count ?? 0) + 1, userLikes };
 
-    const { error } = await supabase
-      .from('ideas')
-      .update({ likes: newLikes })
-      .eq('id', idea.id);
-
-    if (!error) {
-      setIdeas(ideas.map(i => i.id === idea.id ? { ...i, likes: newLikes } : i));
-    }
+    const { error } = await supabase.from('ideas').update({ likes: newLikes }).eq('id', idea.id);
+    if (!error) setIdeas(ideas.map(i => i.id === idea.id ? { ...i, likes: newLikes } : i));
   };
 
   /* 貢献 */
   const handleContributionSubmit = async ({ type, content: cContent }) => {
-    const newContrib = {
-      user: currentUser.name,
-      type,
-      content: cContent,
-      created_at: new Date().toISOString()
-    };
-
+    const newContrib = { user: currentUser.name, type, content: cContent, created_at: new Date().toISOString() };
     const targetIdea = contributionModal.idea;
     const updatedContribs = [...(targetIdea.contributions || []), newContrib];
 
-    const { error } = await supabase
-      .from('ideas')
-      .update({ contributions: updatedContribs, status: "open" })
-      .eq('id', targetIdea.id);
-
-    if (!error) {
-      setIdeas(ideas.map(i => i.id === targetIdea.id ? { ...i, contributions: updatedContribs, status: "open" } : i));
-    }
+    const { error } = await supabase.from('ideas').update({ contributions: updatedContribs, status: "open" }).eq('id', targetIdea.id);
+    if (!error) setIdeas(ideas.map(i => i.id === targetIdea.id ? { ...i, contributions: updatedContribs, status: "open" } : i));
+    setContributionModal({ isOpen: false, idea: null });
   };
 
   /* 削除 */
@@ -389,37 +339,35 @@ const App = () => {
     if (!error) setIdeas(ideas.filter(i => i.id !== id));
   };
 
-  /* お気に入り (これはローカルのみの体験にしています) */
-  const handleFavorite = (id) => {
-    setIdeas(ideas.map(i => i.id === id ? { ...i, favorited: !i.favorited } : i));
-  };
+  /* お気に入り (ローカル体験) */
+  const handleFavorite = (id) => setIdeas(ideas.map(i => i.id === id ? { ...i, favorited: !i.favorited } : i));
 
   /* フィルタリング */
   let filtered = mode === "business" ? ideas.filter(i => i.verified) : ideas;
   if (activeTab === "favorites") filtered = filtered.filter(i => i.favorited);
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    filtered = filtered.filter(i => i.title.toLowerCase().includes(q) || i.content.toLowerCase().includes(q));
+    filtered = filtered.filter(i => (i.title || "").toLowerCase().includes(q) || (i.content || "").toLowerCase().includes(q));
   }
-  if (filterCategories.length > 0) {
-    filtered = filtered.filter(i => i.categories?.some(c => filterCategories.includes(c)));
-  }
+  if (filterCategories.length > 0) filtered = filtered.filter(i => i.categories?.some(c => filterCategories.includes(c)));
 
-  const sorted = [...filtered].sort((a, b) => 
-    sortMode === "popular" ? (b.likes?.count || 0) - (a.likes?.count || 0) : b.id - a.id
-  );
+  const sorted = [...filtered].sort((a, b) => sortMode === "popular" ? (b.likes?.count || 0) - (a.likes?.count || 0) : new Date(b.created_at) - new Date(a.created_at));
 
   return (
     <div className="min-h-screen bg-slate-50 pb-36 font-sans">
-      <header className="sticky top-0 z-10 bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 shadow-md">
+      <header className="sticky top-0 z-10 bg-gradient-to-r from-yellow-500 to-amber-400 text-white p-4 shadow-md">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Lightbulb size={22} />
             <h1 className="text-lg font-bold">コトハジメ</h1>
           </div>
           <div className="flex bg-white/20 rounded-full p-1">
-            <button onClick={() => {setMode("creator"); setActiveTab("home")}} className={`px-3 py-1 rounded-full text-xs font-bold ${mode === "creator" ? "bg-white text-indigo-600" : "text-white"}`}>クリエイター</button>
-            <button onClick={() => {setMode("business"); setActiveTab("home")}} className={`px-3 py-1 rounded-full text-xs font-bold ${mode === "business" ? "bg-white text-indigo-600" : "text-white"}`}>ビジネス</button>
+            <button onClick={() => {setMode("creator"); setActiveTab("home")}} className={`px-3 py-1 rounded-full text-xs font-bold ${mode === "creator" ? "bg-white text-amber-600" : "text-white"}`}>
+              <Lightbulb size={14} className="inline mr-2" /> クリエイター
+            </button>
+            <button onClick={() => {setMode("business"); setActiveTab("home")}} className={`px-3 py-1 rounded-full text-xs font-bold ${mode === "business" ? "bg-white text-amber-600" : "text-white"}`}>
+              <Lightbulb size={14} className="inline mr-2" /> ビジネス
+            </button>
           </div>
         </div>
       </header>
@@ -436,7 +384,7 @@ const App = () => {
                   <button key={c.id} type="button" onClick={() => setSelectedCategories(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])} className={`px-3 py-1 rounded-full text-xs font-bold ${selectedCategories.includes(c.id) ? c.color : "bg-slate-100 text-slate-400"}`}>{c.label}</button>
                 ))}
               </div>
-              <button type="submit" className="w-full bg-indigo-500 text-white py-3 rounded-xl font-bold">公開する</button>
+              <button type="submit" className="w-full bg-amber-500 text-white py-3 rounded-xl font-bold">公開する</button>
               <button type="button" onClick={() => setActiveTab("home")} className="w-full text-slate-400 text-sm">キャンセル</button>
             </form>
           </div>
@@ -458,11 +406,11 @@ const App = () => {
       </main>
 
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t p-3 flex justify-around">
-        <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center text-xs ${activeTab === "home" ? "text-indigo-600" : "text-slate-400"}`}><Home size={20} />ホーム</button>
+        <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center text-xs ${activeTab === "home" ? "text-amber-600" : "text-slate-400"}`}><Home size={20} />ホーム</button>
         {mode === "creator" ? (
-          <button onClick={() => setActiveTab("post")} className={`flex flex-col items-center text-xs ${activeTab === "post" ? "text-indigo-600" : "text-slate-400"}`}><PlusCircle size={20} />投稿</button>
+          <button onClick={() => setActiveTab("post")} className={`flex flex-col items-center text-xs ${activeTab === "post" ? "text-amber-600" : "text-slate-400"}`}><PlusCircle size={20} />投稿</button>
         ) : (
-          <button onClick={() => setActiveTab("favorites")} className={`flex flex-col items-center text-xs ${activeTab === "favorites" ? "text-indigo-600" : "text-slate-400"}`}><Star size={20} />お気に入り</button>
+          <button onClick={() => setActiveTab("favorites")} className={`flex flex-col items-center text-xs ${activeTab === "favorites" ? "text-amber-600" : "text-slate-400"}`}><Star size={20} />お気に入り</button>
         )}
       </footer>
 
