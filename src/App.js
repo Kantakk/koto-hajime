@@ -13,6 +13,7 @@ import {
   PlusCircle,
   Search,
   Send,
+  Share2,
   Star,
   Tag,
   Trash2,
@@ -31,6 +32,8 @@ const CONTRIBUTION_LIMIT = 300;
 const USER_KEY = "kht-user-v1";
 const STORAGE_KEY = "kotohajime-ideas-v6";
 const MODE_KEY = "kotohajime-mode";
+const DRAFT_KEY = "kotohajime-draft";
+const ONBOARDING_KEY = "kotohajime-onboarding-done";
 
 const GLOBAL_DISTRIBUTION = { creator: 30, contributors: 30, platform: 40 };
 
@@ -104,6 +107,91 @@ const StatusBadge = ({ status }) => {
   };
   const s = statuses[status] || statuses.draft;
   return <span className={`px-3 py-1 rounded-full text-xs font-bold ${s.color}`}>{s.label}</span>;
+};
+
+/* ====== オンボーディングモーダル ====== */
+const OnboardingModal = ({ isOpen, onClose }) => {
+  const [step, setStep] = useState(0);
+
+  const steps = [
+    {
+      title: "コトハジメへようこそ！",
+      description: "アイデアを投稿し、みんなで育てるプラットフォームです",
+      icon: <Lightbulb size={48} className="text-yellow-500" />,
+      content: "あなたの「もしもこんなサービスがあったら...」というアイデアを投稿して、クリエイターや企業と一緒に実現を目指しましょう。"
+    },
+    {
+      title: "2つのモード",
+      description: "クリエイターモードとビジネスモード",
+      icon: <Users size={48} className="text-indigo-500" />,
+      content: "クリエイターモード：アイデアを投稿・応援・貢献\nビジネスモード：検証済みアイデアを探して事業化"
+    },
+    {
+      title: "貢献して成長させる",
+      description: "技術・デザイン・ビジネスの視点から",
+      icon: <MessageSquare size={48} className="text-green-500" />,
+      content: "気になるアイデアに貢献すると、そのアイデアが実現した時の収益配分を受け取れます（原案者30%、貢献者30%、運営40%）"
+    },
+    {
+      title: "さあ、始めましょう！",
+      description: "あなたのアイデアを世界へ",
+      icon: <Star size={48} className="text-pink-500" />,
+      content: "まずはホーム画面でアイデアを見てみましょう。気に入ったら応援ボタンを押してみてください！"
+    }
+  ];
+
+  if (!isOpen) return null;
+
+  const currentStep = steps[step];
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl">
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="mb-4">{currentStep.icon}</div>
+          <h2 className="text-2xl font-black text-slate-900 mb-2">{currentStep.title}</h2>
+          <p className="text-sm text-indigo-600 font-bold">{currentStep.description}</p>
+        </div>
+
+        <div className="bg-slate-50 rounded-xl p-4 mb-6">
+          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{currentStep.content}</p>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          {steps.map((_, i) => (
+            <div key={i} className={`flex-1 h-2 rounded-full ${i === step ? "bg-indigo-500" : "bg-slate-200"}`} />
+          ))}
+        </div>
+
+        <div className="flex gap-3">
+          {step > 0 && (
+            <button onClick={() => setStep(step - 1)} className="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition">
+              戻る
+            </button>
+          )}
+          <button
+            onClick={() => {
+              if (step < steps.length - 1) {
+                setStep(step + 1);
+              } else {
+                localStorage.setItem(ONBOARDING_KEY, "true");
+                onClose();
+              }
+            }}
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold hover:shadow-lg transition active:scale-95"
+          >
+            {step < steps.length - 1 ? "次へ" : "始める"}
+          </button>
+        </div>
+
+        {step === 0 && (
+          <button onClick={() => { localStorage.setItem(ONBOARDING_KEY, "true"); onClose(); }} className="w-full mt-3 text-xs text-slate-400 hover:text-slate-600">
+            スキップ
+          </button>
+        )}
+      </div>
+    </div>
+  );
 };
 
 /* ====== 貢献モーダル ====== */
@@ -194,7 +282,7 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
   );
 };
 
-/* ====== 成長の記録（既存） ====== */
+/* ====== 成長の記録 ====== */
 const GrowthRecordSection = ({ contributions }) => {
   const [expandedTypes, setExpandedTypes] = useState({});
 
@@ -264,8 +352,8 @@ const GrowthRecordSection = ({ contributions }) => {
   );
 };
 
-/* ====== IdeaCard（カテゴリを複数表示するように改修） ====== */
-const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribute, mode }) => {
+/* ====== IdeaCard ====== */
+const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribute, onShare, mode }) => {
   const [expanded, setExpanded] = useState(false);
   const [showContributions, setShowContributions] = useState(false);
   const isLong = (idea.content || "").length > PREVIEW_LIMIT;
@@ -279,7 +367,6 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={idea.status} />
-          {/* 複数カテゴリをすべて表示する */}
           {Array.isArray(idea.categories) && idea.categories.length > 0 ? (
             <div className="flex items-center gap-2 flex-wrap">
               {idea.categories.map((catId) => (
@@ -338,7 +425,7 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 mb-3">
         {mode === "creator" ? (
           <>
             <button
@@ -370,6 +457,13 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
             </button>
           </>
         )}
+        <button
+          onClick={() => onShare(idea)}
+          className="py-2 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-95"
+          title="シェア"
+        >
+          <Share2 size={16} />
+        </button>
       </div>
 
       <div className="mt-3 flex items-center justify-between">
@@ -447,8 +541,9 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategories, setFilterCategories] = useState([]);
   const [contributionModal, setContributionModal] = useState({ isOpen: false, idea: null });
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  /* ユーザー初期化 */
+  /* ユーザー初期化 & オンボーディング */
   useEffect(() => {
     let u = localStorage.getItem(USER_KEY);
     if (!u) {
@@ -459,6 +554,12 @@ const App = () => {
     } else {
       setCurrentUser(JSON.parse(u));
     }
+
+    // オンボーディングチェック
+    const onboardingDone = localStorage.getItem(ONBOARDING_KEY);
+    if (!onboardingDone) {
+      setShowOnboarding(true);
+    }
   }, []);
 
   /* データロード（サンプル込み） */
@@ -467,7 +568,7 @@ const App = () => {
     const savedMode = localStorage.getItem(MODE_KEY);
 
     if (savedIdeas) {
-      setIdeas(JSON.parse(savedIdeas));
+          setIdeas(JSON.parse(savedIdeas));
     } else {
       const sampleIdeas = [
         {
@@ -513,6 +614,20 @@ const App = () => {
     }
 
     if (savedMode) setMode(savedMode);
+
+    // Draft復元（投稿フォームの下書き）
+    try {
+      const draftRaw = localStorage.getItem(DRAFT_KEY);
+      if (draftRaw) {
+        const draft = JSON.parse(draftRaw);
+        if (draft.title) setTitle(draft.title);
+        if (draft.content) setContent(draft.content);
+        if (Array.isArray(draft.categories)) setSelectedCategories(draft.categories);
+      }
+    } catch (e) {
+      // ignore parse errors
+      console.warn("draft load failed", e);
+    }
   }, []);
 
   /* モード変更時の安全処理 */
@@ -523,12 +638,27 @@ const App = () => {
     }
   }, [mode, activeTab]);
 
+  /* 下書き自動保存 */
+  useEffect(() => {
+    const draft = { title, content, categories: selectedCategories };
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (e) {
+      console.warn("draft save failed", e);
+    }
+  }, [title, content, selectedCategories]);
+
+  /* 保存ユーティリティ */
   const saveIdeas = (data) => {
     setIdeas(data);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.warn("saveIdeas failed", e);
+    }
   };
 
-  /* 投稿 */
+  /* 投稿 (下書き消去含む) */
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
@@ -552,13 +682,16 @@ const App = () => {
     };
 
     saveIdeas([newIdea, ...ideas]);
+    // 下書きを消す
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
+
     setTitle("");
     setContent("");
     setSelectedCategories([]);
     setActiveTab("home");
   };
 
-  /* いいね (最大3回) */
+  /* いいね（1ユーザーあたり1投稿につき最大3回） */
   const handleLike = (id) => {
     const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
     if (!user) return;
@@ -574,28 +707,30 @@ const App = () => {
     saveIdeas(next);
   };
 
-  /* お気に入りトグル */
+  /* お気に入りトグル（ローカル体験） */
   const handleFavorite = (id) => {
     saveIdeas(ideas.map((i) => (i.id === id ? { ...i, favorited: !i.favorited } : i)));
   };
 
-  /* 投稿削除（自分のみ） */
+  /* 削除（自分のみ可能） */
   const handleDelete = (id) => {
     const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
     const target = ideas.find((i) => i.id === id);
     if (!target) return;
     if (target.authorId && user && target.authorId === user.id) {
+      if (!window.confirm("本当にこの投稿を削除しますか？")) return;
       saveIdeas(ideas.filter((i) => i.id !== id));
     } else {
       alert("この投稿はあなたの投稿ではないため削除できません。");
     }
   };
 
-  /* 貢献モーダル */
+  /* 貢献モーダルを開く */
   const handleContribute = (idea) => {
     setContributionModal({ isOpen: true, idea });
   };
 
+  /* 貢献送信 */
   const handleContributionSubmit = ({ type, content: contributionContent }) => {
     const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
     const newContribution = {
@@ -608,23 +743,50 @@ const App = () => {
 
     saveIdeas(
       ideas.map((i) =>
-        i.id === contributionModal.idea.id ? { ...i, contributions: [...(i.contributions || []), newContribution], status: "open" } : i
+        i.id === contributionModal.idea.id
+          ? { ...i, contributions: [...(i.contributions || []), newContribution], status: "open" }
+          : i
       )
     );
     setContributionModal({ isOpen: false, idea: null });
   };
 
-  /* カテゴリ選択（投稿側） */
+  /* カテゴリ選択（投稿フォーム） */
   const toggleCategorySelect = (catId) => {
     setSelectedCategories((prev) => (prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]));
   };
 
-  /* カテゴリフィルター（一覧） */
+  /* カテゴリフィルタ（一覧） */
   const toggleCategoryFilter = (catId) => {
     setFilterCategories((prev) => (prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]));
   };
 
-  /* フィルタリング順序： mode -> favorites tab -> search -> category filter -> sort */
+  /* シェア機能（安全に window を参照） */
+  const handleShare = (idea) => {
+    try {
+      const text = `「${idea.title}」\n\n${truncateText(idea.content || "", 120)}\n\n#コトハジメ`;
+      let shareUrl = "";
+      if (typeof window !== "undefined") {
+        // できれば特定アイデアへリンクを作る（hash付き）
+        shareUrl = `${window.location.origin}${window.location.pathname}?idea=${idea.id}#${idea.hash || ""}`;
+      }
+
+      if (navigator.share) {
+        navigator.share({ title: idea.title, text, url: shareUrl }).catch(() => {
+          // ignore
+        });
+      } else {
+        // fallback: open Twitter intent
+        const tweet = `${text}\n${shareUrl}`;
+        const twitter = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`;
+        window.open(twitter, "_blank", "noopener");
+      }
+    } catch (e) {
+      console.warn("share failed", e);
+    }
+  };
+
+  /* フィルタリング & 並び替え */
   let filteredIdeas = mode === "business" ? ideas.filter((i) => i.verified === true) : ideas;
 
   if (activeTab === "favorites" && mode === "business") {
@@ -633,15 +795,26 @@ const App = () => {
 
   if (searchQuery.trim()) {
     const q = searchQuery.toLowerCase();
-    filteredIdeas = filteredIdeas.filter((i) => (i.title || "").toLowerCase().includes(q) || (i.content || "").toLowerCase().includes(q));
+    filteredIdeas = filteredIdeas.filter(
+      (i) => (i.title || "").toLowerCase().includes(q) || (i.content || "").toLowerCase().includes(q)
+    );
   }
 
   if (filterCategories.length > 0) {
-    filteredIdeas = filteredIdeas.filter((i) => i.categories?.some((c) => filterCategories.includes(c)));
+    filteredIdeas = filteredIdeas.filter((i) => Array.isArray(i.categories) && i.categories.some((c) => filterCategories.includes(c)));
   }
 
-  const sortedIdeas = [...filteredIdeas].sort((a, b) => (sortMode === "popular" ? (b.likes?.count ?? 0) - (a.likes?.count ?? 0) : b.id - a.id));
+  const sortedIdeas = [...filteredIdeas].sort((a, b) =>
+    sortMode === "popular" ? (b.likes?.count ?? 0) - (a.likes?.count ?? 0) : (new Date(b.createdAt) - new Date(a.createdAt))
+  );
 
+  /* オンボーディング閉じる */
+  const closeOnboarding = () => {
+    try { localStorage.setItem(ONBOARDING_KEY, "true"); } catch (e) {}
+    setShowOnboarding(false);
+  };
+
+  /* レンダリング */
   return (
     <div className="min-h-screen bg-slate-50 pb-36 font-sans">
       <header className="sticky top-0 z-10 bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 shadow-md">
@@ -654,10 +827,13 @@ const App = () => {
         </div>
       </header>
 
-      {/* 安心文言を目立たせて固定 */}
+      {/* 安心文言を常時表示 */}
       <AssuranceBanner />
 
       <DistributionInfo />
+
+      {/* オンボーディング */}
+      <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} />
 
       {mode === "business" && (
         <div className="max-w-md mx-auto p-4">
@@ -687,17 +863,27 @@ const App = () => {
 
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((cat) => (
-                <button key={cat.id} onClick={() => toggleCategoryFilter(cat.id)} className={`px-3 py-1 rounded-full text-xs font-bold transition ${filterCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                <button
+                  key={cat.id}
+                  onClick={() => toggleCategoryFilter(cat.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition ${filterCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                >
                   {cat.label}
                 </button>
               ))}
             </div>
 
             <div className="flex bg-white rounded-lg p-1 border">
-              <button onClick={() => setSortMode("new")} className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "new" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}>
+              <button
+                onClick={() => setSortMode("new")}
+                className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "new" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}
+              >
                 <Clock size={14} /> 新着
               </button>
-              <button onClick={() => setSortMode("popular")} className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "popular" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}>
+              <button
+                onClick={() => setSortMode("popular")}
+                className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "popular" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}
+              >
                 <TrendingUp size={14} /> 人気
               </button>
             </div>
@@ -706,7 +892,17 @@ const App = () => {
               <div className="text-center py-12 text-slate-400">該当するアイデアがありません</div>
             ) : (
               sortedIdeas.map((idea) => (
-                <IdeaCard key={idea.id} idea={idea} currentUser={currentUser} onLike={handleLike} onFavorite={handleFavorite} onDelete={handleDelete} onContribute={handleContribute} mode={mode} />
+                <IdeaCard
+                  key={idea.id}
+                  idea={idea}
+                  currentUser={currentUser}
+                  onLike={handleLike}
+                  onFavorite={handleFavorite}
+                  onDelete={handleDelete}
+                  onContribute={handleContribute}
+                  onShare={handleShare}
+                  mode={mode}
+                />
               ))
             )}
           </>
@@ -717,21 +913,39 @@ const App = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="text-xs font-bold text-slate-400">タイトル</label>
-                <input value={title} maxLength={TITLE_LIMIT} onChange={(e) => setTitle(e.target.value)} className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400" placeholder="あなたの「もしも」を一言で..." />
+                <input
+                  value={title}
+                  maxLength={TITLE_LIMIT}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="あなたの「もしも」を一言で..."
+                />
                 <p className="text-right text-xs text-slate-400">{title.length}/{TITLE_LIMIT}</p>
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-400">内容</label>
-                <textarea rows={5} value={content} maxLength={CONTENT_LIMIT} onChange={(e) => setContent(e.target.value)} className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400" placeholder="詳しく教えてください..." />
+                <textarea
+                  rows={5}
+                  value={content}
+                  maxLength={CONTENT_LIMIT}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="詳しく教えてください..."
+                />
                 <p className="text-right text-xs text-slate-400">{content.length}/{CONTENT_LIMIT}</p>
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-400 mb-2 block">カテゴリー（複数選択可）</label>
                 <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map((cat) => (
-                    <button key={cat.id} type="button" onClick={() => toggleCategorySelect(cat.id)} className={`px-3 py-1 rounded-full text-xs font-bold transition ${selectedCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                  {CATEGORIES.map(cat => (
+                    <button
+                      type="button"
+                      key={cat.id}
+                      onClick={() => toggleCategorySelect(cat.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition ${selectedCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                    >
                       {cat.label}
                     </button>
                   ))}
@@ -756,9 +970,20 @@ const App = () => {
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform">
-                <Send size={18} /> アイデアを公開する
-              </button>
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform">
+                  <Send size={18} /> アイデアを公開する
+                </button>
+                <button type="button" onClick={() => {
+                  // 下書き捨て
+                  if (confirm("下書きを破棄しますか？")) {
+                    setTitle(""); setContent(""); setSelectedCategories([]);
+                    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+                  }
+                }} className="py-3 px-4 rounded-2xl border text-slate-600 font-bold">
+                  下書きを破棄
+                </button>
+              </div>
             </form>
           </div>
         ) : (
@@ -767,9 +992,14 @@ const App = () => {
       </main>
 
       {/* Contribution Modal */}
-      <ContributionModal isOpen={contributionModal.isOpen} ideaTitle={contributionModal.idea?.title} onClose={() => setContributionModal({ isOpen: false, idea: null })} onSubmit={handleContributionSubmit} />
+      <ContributionModal
+        isOpen={contributionModal.isOpen}
+        ideaTitle={contributionModal.idea?.title}
+        onClose={() => setContributionModal({ isOpen: false, idea: null })}
+        onSubmit={handleContributionSubmit}
+      />
 
-      {/* フッターナビ */}
+      {/* Footer nav */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md">
         <div className="max-w-md mx-auto flex justify-around py-3">
           <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center text-xs ${activeTab === "home" ? "text-indigo-600 font-bold" : "text-slate-400"}`}>
