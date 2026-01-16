@@ -976,7 +976,7 @@ const App = () => {
                 </button>
                 <button type="button" onClick={() => {
                   // 下書き捨て
-                  if (confirm("下書きを破棄しますか？")) {
+                  if (window.confirm("下書きを破棄しますか？")) {
                     setTitle(""); setContent(""); setSelectedCategories([]);
                     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
                   }
