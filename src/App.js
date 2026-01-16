@@ -1,6 +1,8 @@
 import {
   Briefcase,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Code,
   Heart,
@@ -27,7 +29,7 @@ const CONTENT_LIMIT = 500;
 const PREVIEW_LIMIT = 120;
 const CONTRIBUTION_LIMIT = 300;
 const USER_KEY = "kht-user-v1";
-const STORAGE_KEY = "kotohajime-ideas-v4";
+const STORAGE_KEY = "kotohajime-ideas-v6";
 const MODE_KEY = "kotohajime-mode";
 
 const GLOBAL_DISTRIBUTION = { creator: 30, contributors: 30, platform: 40 };
@@ -43,8 +45,7 @@ const CATEGORIES = [
   { id: "other", label: "その他", color: "bg-gray-100 text-gray-700" }
 ];
 
-const truncateText = (text, limit) =>
-  text.length <= limit ? text : text.slice(0, limit) + "…";
+const truncateText = (text = "", limit) => (text.length <= limit ? text : text.slice(0, limit) + "…");
 
 const formatISODate = (iso) => {
   try {
@@ -55,7 +56,7 @@ const formatISODate = (iso) => {
   }
 };
 
-/* ===== UIパーツ ===== */
+/* ====== UIパーツ ====== */
 const ContributionBadge = ({ type }) => {
   const badges = {
     tech: { icon: <Code size={12} />, label: "技術", color: "bg-blue-100 text-blue-700" },
@@ -71,7 +72,7 @@ const ContributionBadge = ({ type }) => {
 };
 
 const CategoryBadge = ({ categoryId }) => {
-  const cat = CATEGORIES.find(c => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1];
+  const cat = CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1];
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${cat.color}`}>
       <Tag size={12} /> {cat.label}
@@ -79,6 +80,20 @@ const CategoryBadge = ({ categoryId }) => {
   );
 };
 
+/* ====== 注意書き（安心文言） ====== */
+const AssuranceBanner = () => (
+  <div className="max-w-md mx-auto px-4 py-3">
+    <div className="rounded-xl bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+      <div className="font-bold mb-1">※ご注意（β版）</div>
+      <div className="leading-relaxed">
+        ※現在β版です。投稿されたアイデアは予告なく削除・変更される可能性があります。  
+        投稿内容の権利関係や事業化に関する保証は行っていません。自分の投稿は自分で削除できます。
+      </div>
+    </div>
+  </div>
+);
+
+/* ====== ステータスバッジ ====== */
 const StatusBadge = ({ status }) => {
   const statuses = {
     draft: { label: "📝 投稿中", color: "bg-gray-100 text-gray-700" },
@@ -123,9 +138,7 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
           </button>
         </div>
 
-        <div className="text-sm text-slate-600 mb-4">
-          「{truncateText(ideaTitle || "", 30)}」への貢献
-        </div>
+        <div className="text-sm text-slate-600 mb-4">「{truncateText(ideaTitle || "", 30)}」への貢献</div>
 
         <div className="space-y-4">
           <div>
@@ -181,11 +194,81 @@ const ContributionModal = ({ isOpen, onClose, onSubmit, ideaTitle }) => {
   );
 };
 
-/* ====== IdeaCard ====== */
+/* ====== 成長の記録（既存） ====== */
+const GrowthRecordSection = ({ contributions }) => {
+  const [expandedTypes, setExpandedTypes] = useState({});
+
+  const techContributions = contributions.filter((c) => c.type === "tech");
+  const designContributions = contributions.filter((c) => c.type === "design");
+  const businessContributions = contributions.filter((c) => c.type === "business");
+
+  const toggleExpand = (type) => setExpandedTypes((p) => ({ ...p, [type]: !p[type] }));
+
+  const ContributionTypeSection = ({ icon, title, contributions, type }) => {
+    const isExpanded = expandedTypes[type];
+    const display = isExpanded ? contributions : contributions.slice(0, 2);
+    const hasMore = contributions.length > 2;
+
+    return (
+      <div className="mb-4 last:mb-0">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-lg">{icon}</span>
+          <h5 className="font-bold text-slate-700 text-sm">{title}</h5>
+          <span className="text-xs text-slate-500">({contributions.length}件)</span>
+        </div>
+
+        {contributions.length === 0 ? (
+          <div className="text-xs text-slate-500 italic p-3 bg-slate-50 rounded-lg border border-slate-200">
+            📢 {title}を募集中！
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {display.map((c, i) => (
+                <div key={i} className="p-3 bg-white rounded-lg border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-700">{c.user}</span>
+                      <ContributionBadge type={c.type} />
+                    </div>
+                    <span className="text-xs text-slate-400">{c.date}</span>
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed">{c.content}</p>
+                </div>
+              ))}
+            </div>
+
+            {hasMore && (
+              <button onClick={() => toggleExpand(type)} className="mt-2 text-xs text-indigo-500 hover:text-indigo-600 font-semibold flex items-center gap-1 hover:underline">
+                {isExpanded ? <><ChevronUp size={14} /> 閉じる</> : <><ChevronDown size={14} /> もっと見る (+{contributions.length - 2}件)</>}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-blue-50 rounded-xl border-2 border-green-200">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="text-2xl">🌱</div>
+        <h4 className="font-bold text-slate-800">成長の記録</h4>
+        <span className="text-xs text-slate-500">{contributions.length}件の貢献</span>
+      </div>
+
+      <ContributionTypeSection icon="📘" title="技術的な実現方法" contributions={techContributions} type="tech" />
+      <ContributionTypeSection icon="💼" title="ビジネスモデル" contributions={businessContributions} type="business" />
+      <ContributionTypeSection icon="🎨" title="デザイン提案" contributions={designContributions} type="design" />
+    </div>
+  );
+};
+
+/* ====== IdeaCard（カテゴリを複数表示するように改修） ====== */
 const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribute, mode }) => {
   const [expanded, setExpanded] = useState(false);
   const [showContributions, setShowContributions] = useState(false);
-  const isLong = idea.content.length > PREVIEW_LIMIT;
+  const isLong = (idea.content || "").length > PREVIEW_LIMIT;
 
   const userLikeCount = (idea.likes?.userLikes && currentUser?.id && idea.likes.userLikes[currentUser.id]) || 0;
   const remaining = 3 - userLikeCount;
@@ -196,9 +279,19 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={idea.status} />
-          {idea.categories && idea.categories.length > 0 && <CategoryBadge categoryId={idea.categories[0]} />}
+          {/* 複数カテゴリをすべて表示する */}
+          {Array.isArray(idea.categories) && idea.categories.length > 0 ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              {idea.categories.map((catId) => (
+                <CategoryBadge key={catId} categoryId={catId} />
+              ))}
+            </div>
+          ) : (
+            <CategoryBadge categoryId="other" />
+          )}
           {idea.verified && <CheckCircle size={16} className="text-green-500" />}
         </div>
+
         <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full whitespace-nowrap">
           {idea.likes?.count ?? 0} 応援
         </div>
@@ -215,7 +308,7 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
       <h3 className="font-bold text-slate-900 mb-1">{idea.title}</h3>
 
       <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line mb-3">
-        {expanded ? idea.content : truncateText(idea.content, PREVIEW_LIMIT)}
+        {expanded ? idea.content : truncateText(idea.content || "", PREVIEW_LIMIT)}
       </p>
 
       {isLong && (
@@ -235,33 +328,18 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
             </div>
           </button>
 
-          {showContributions && (
-            <div className="mt-2 space-y-2">
-              {idea.contributions.map((c, i) => (
-                <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-700">{c.user}</span>
-                      <ContributionBadge type={c.type} />
-                    </div>
-                    <span className="text-xs text-slate-400">{c.date}{c.createdAt ? ` • ${formatISODate(c.createdAt)}` : ""}</span>
-                  </div>
-                  <p className="text-sm text-slate-600">{c.content}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          {showContributions && <div className="mt-2"><GrowthRecordSection contributions={idea.contributions} /></div>}
         </div>
       )}
 
-      {mode === 'business' && idea.marketSize && (
+      {mode === "business" && idea.marketSize && (
         <div className="mb-3 p-3 bg-blue-50 rounded-lg">
           <div className="text-xs font-bold text-blue-900">💰 想定市場規模: {idea.marketSize}</div>
         </div>
       )}
 
       <div className="flex gap-2">
-        {mode === 'creator' ? (
+        {mode === "creator" ? (
           <>
             <button
               onClick={() => onLike(idea.id)}
@@ -310,10 +388,8 @@ const IdeaCard = ({ idea, currentUser, onLike, onFavorite, onDelete, onContribut
 
 /* ====== ModeToggle ====== */
 const ModeToggle = ({ mode, setMode, setActiveTab }) => {
-  // 安全にタブを戻す処理をここで行う
   const switchTo = (m) => {
     setMode(m);
-    // business は post を持たないので home に戻す
     setActiveTab("home");
   };
 
@@ -445,7 +521,7 @@ const App = () => {
     if (!AVAILABLE_TABS[mode].includes(activeTab)) {
       setActiveTab("home");
     }
-  }, [mode]);
+  }, [mode, activeTab]);
 
   const saveIdeas = (data) => {
     setIdeas(data);
@@ -482,7 +558,7 @@ const App = () => {
     setActiveTab("home");
   };
 
-  /* いいね（1ユーザー1投稿につき最大3回） */
+  /* いいね (最大3回) */
   const handleLike = (id) => {
     const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
     if (!user) return;
@@ -498,7 +574,7 @@ const App = () => {
     saveIdeas(next);
   };
 
-  /* お気に入り（トグル） */
+  /* お気に入りトグル */
   const handleFavorite = (id) => {
     saveIdeas(ideas.map((i) => (i.id === id ? { ...i, favorited: !i.favorited } : i)));
   };
@@ -515,12 +591,11 @@ const App = () => {
     }
   };
 
-  /* 貢献モーダルオープン */
+  /* 貢献モーダル */
   const handleContribute = (idea) => {
     setContributionModal({ isOpen: true, idea });
   };
 
-  /* 貢献モーダルの送信 */
   const handleContributionSubmit = ({ type, content: contributionContent }) => {
     const user = currentUser || JSON.parse(localStorage.getItem(USER_KEY));
     const newContribution = {
@@ -533,22 +608,20 @@ const App = () => {
 
     saveIdeas(
       ideas.map((i) =>
-        i.id === contributionModal.idea.id
-          ? { ...i, contributions: [...(i.contributions || []), newContribution], status: "open" }
-          : i
+        i.id === contributionModal.idea.id ? { ...i, contributions: [...(i.contributions || []), newContribution], status: "open" } : i
       )
     );
     setContributionModal({ isOpen: false, idea: null });
   };
 
+  /* カテゴリ選択（投稿側） */
   const toggleCategorySelect = (catId) => {
     setSelectedCategories((prev) => (prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]));
   };
 
+  /* カテゴリフィルター（一覧） */
   const toggleCategoryFilter = (catId) => {
-    setFilterCategories((prev) =>
-      prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]
-    );
+    setFilterCategories((prev) => (prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]));
   };
 
   /* フィルタリング順序： mode -> favorites tab -> search -> category filter -> sort */
@@ -560,18 +633,14 @@ const App = () => {
 
   if (searchQuery.trim()) {
     const q = searchQuery.toLowerCase();
-    filteredIdeas = filteredIdeas.filter(
-      (i) => (i.title || "").toLowerCase().includes(q) || (i.content || "").toLowerCase().includes(q)
-    );
+    filteredIdeas = filteredIdeas.filter((i) => (i.title || "").toLowerCase().includes(q) || (i.content || "").toLowerCase().includes(q));
   }
 
   if (filterCategories.length > 0) {
     filteredIdeas = filteredIdeas.filter((i) => i.categories?.some((c) => filterCategories.includes(c)));
   }
 
-  const sortedIdeas = [...filteredIdeas].sort((a, b) =>
-    sortMode === "popular" ? (b.likes?.count ?? 0) - (a.likes?.count ?? 0) : b.id - a.id
-  );
+  const sortedIdeas = [...filteredIdeas].sort((a, b) => (sortMode === "popular" ? (b.likes?.count ?? 0) - (a.likes?.count ?? 0) : b.id - a.id));
 
   return (
     <div className="min-h-screen bg-slate-50 pb-36 font-sans">
@@ -584,6 +653,9 @@ const App = () => {
           <ModeToggle mode={mode} setMode={setMode} setActiveTab={setActiveTab} />
         </div>
       </header>
+
+      {/* 安心文言を目立たせて固定 */}
+      <AssuranceBanner />
 
       <DistributionInfo />
 
@@ -615,27 +687,17 @@ const App = () => {
 
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => toggleCategoryFilter(cat.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition ${filterCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-                >
+                <button key={cat.id} onClick={() => toggleCategoryFilter(cat.id)} className={`px-3 py-1 rounded-full text-xs font-bold transition ${filterCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                   {cat.label}
                 </button>
               ))}
             </div>
 
             <div className="flex bg-white rounded-lg p-1 border">
-              <button
-                onClick={() => setSortMode("new")}
-                className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "new" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}
-              >
+              <button onClick={() => setSortMode("new")} className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "new" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}>
                 <Clock size={14} /> 新着
               </button>
-              <button
-                onClick={() => setSortMode("popular")}
-                className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "popular" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}
-              >
+              <button onClick={() => setSortMode("popular")} className={`flex-1 py-2 rounded-md text-sm font-bold transition ${sortMode === "popular" ? "bg-indigo-50 text-indigo-600" : "text-slate-400"}`}>
                 <TrendingUp size={14} /> 人気
               </button>
             </div>
@@ -644,16 +706,7 @@ const App = () => {
               <div className="text-center py-12 text-slate-400">該当するアイデアがありません</div>
             ) : (
               sortedIdeas.map((idea) => (
-                <IdeaCard
-                  key={idea.id}
-                  idea={idea}
-                  currentUser={currentUser}
-                  onLike={handleLike}
-                  onFavorite={handleFavorite}
-                  onDelete={handleDelete}
-                  onContribute={handleContribute}
-                  mode={mode}
-                />
+                <IdeaCard key={idea.id} idea={idea} currentUser={currentUser} onLike={handleLike} onFavorite={handleFavorite} onDelete={handleDelete} onContribute={handleContribute} mode={mode} />
               ))
             )}
           </>
@@ -664,39 +717,21 @@ const App = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="text-xs font-bold text-slate-400">タイトル</label>
-                <input
-                  value={title}
-                  maxLength={TITLE_LIMIT}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="あなたの「もしも」を一言で..."
-                />
+                <input value={title} maxLength={TITLE_LIMIT} onChange={(e) => setTitle(e.target.value)} className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400" placeholder="あなたの「もしも」を一言で..." />
                 <p className="text-right text-xs text-slate-400">{title.length}/{TITLE_LIMIT}</p>
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-400">内容</label>
-                <textarea
-                  rows={5}
-                  value={content}
-                  maxLength={CONTENT_LIMIT}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="詳しく教えてください..."
-                />
+                <textarea rows={5} value={content} maxLength={CONTENT_LIMIT} onChange={(e) => setContent(e.target.value)} className="w-full mt-1 p-3 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-400" placeholder="詳しく教えてください..." />
                 <p className="text-right text-xs text-slate-400">{content.length}/{CONTENT_LIMIT}</p>
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-400 mb-2 block">カテゴリー（複数選択可）</label>
                 <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map(cat => (
-                    <button
-                      type="button"
-                      key={cat.id}
-                      onClick={() => toggleCategorySelect(cat.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition ${selectedCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-                    >
+                  {CATEGORIES.map((cat) => (
+                    <button key={cat.id} type="button" onClick={() => toggleCategorySelect(cat.id)} className={`px-3 py-1 rounded-full text-xs font-bold transition ${selectedCategories.includes(cat.id) ? cat.color : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                       {cat.label}
                     </button>
                   ))}
@@ -732,12 +767,7 @@ const App = () => {
       </main>
 
       {/* Contribution Modal */}
-      <ContributionModal
-        isOpen={contributionModal.isOpen}
-        ideaTitle={contributionModal.idea?.title}
-        onClose={() => setContributionModal({ isOpen: false, idea: null })}
-        onSubmit={handleContributionSubmit}
-      />
+      <ContributionModal isOpen={contributionModal.isOpen} ideaTitle={contributionModal.idea?.title} onClose={() => setContributionModal({ isOpen: false, idea: null })} onSubmit={handleContributionSubmit} />
 
       {/* フッターナビ */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md">
